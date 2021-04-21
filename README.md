@@ -34,5 +34,5 @@ An example of creating a Graph from a csv:
 path = os.path.join(sys.path[0], Path(
     "data/csv-data/airports_new.csv"))
 
-grr = graph_from_geodata_csv(path)
+graph = graph_from_geodata_csv(path)
 ```
