@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from shapely.geometry import Point
 import pandas as pd
 from util import dist_to_spherical
@@ -100,7 +100,14 @@ class Graph:
         return self._node_len
 
 
-def parse_coords_node(node: GraphNode):
+def parse_coords_node(node: GraphNode) -> Tuple[float, ...]:
+    """Retrieves coordinates from a node (if possible).
+
+    :param node: The node to parse coordinates from
+    :type node: GraphNode
+    :return: A point containing the geometry
+    :rtype: Tuple[float, ...]
+    """
     try:
         coords = node.contains['coords']
     except KeyError:
@@ -111,8 +118,8 @@ def parse_coords_node(node: GraphNode):
             except KeyError:
                 pass
         except KeyError:
-            raise AttributeError("The node must contain a field called 'coords', or fields 'coord1','coord2','coord3'.")
-    return Point(coords)
+            return None
+    return coords
 
 
 def graph_from_geodata_csv(filepath: str) -> Graph:
@@ -139,11 +146,11 @@ def graph_from_geodata_csv(filepath: str) -> Graph:
 
         node = GraphNode(coord1=row['coord1'], coord2=row['coord2'], label=row['label'])
         graph.add_vertex(node)
-        coords = parse_coords_node(node)
+        coords = Point(parse_coords_node(node))
 
         for j in range(len(graph)):
             other = graph.get_vertex(j)
-            ocoords = parse_coords_node(other)
+            ocoords = Point(parse_coords_node(other))
             graph.add_edge(node, other, dist_to_spherical(coords, ocoords))
 
     return graph
