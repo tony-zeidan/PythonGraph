@@ -11,13 +11,13 @@ class GraphNode:
     """An implementation of a graph node.
     """
 
-    def __init__(self, lat, long, label=''):
+    def __init__(self, label='', **kwargs):
         self.label = label
-        self.pos = Point(lat, long)
+        self.contains = kwargs
         self.heuristic = 0
 
     def __str__(self):
-        return f'Node ({self.label}, {self.pos})'
+        return f'Node ({self.label}, {self.contains})'
 
 
 class Graph:
@@ -100,11 +100,28 @@ class Graph:
         return self._node_len
 
 
+def parse_coords_node(node: GraphNode):
+    try:
+        coords = node.contains['coords']
+    except KeyError:
+        try:
+            coords = node.contains['coord1'], node.contains['coord2']
+            try:
+                coords += tuple(node.contains['coord3'])
+            except KeyError:
+                pass
+        except KeyError:
+            raise AttributeError("The node must contain a field called 'coords', or fields 'coord1','coord2','coord3'.")
+    return Point(coords)
+
+
 def graph_from_geodata_csv(filepath: str) -> Graph:
     """Gets a graph from a file containing lat long coordinates.
 
     This function assumes the necessary columns in the
     file are labelled 'lat','long', and 'label'.
+    It also assumes each node has been properly initialized with
+    kwargs containing 'lat','long',or 'pos'.
     
     :param filepath: The path to the file
     :type filepath: str
@@ -114,16 +131,19 @@ def graph_from_geodata_csv(filepath: str) -> Graph:
     gdf = pd.read_csv(filepath)
     graph = Graph()
 
-    gdf['lat'] = gdf['lat'].astype(float)
-    gdf['long'] = gdf['long'].astype(float)
+    gdf['coord1'] = gdf['coord1'].astype(float)
+    gdf['coord2'] = gdf['coord2'].astype(float)
     gdf['label'] = gdf['label'].astype(str)
 
     for i, row in gdf.iterrows():
 
-        node = GraphNode(lat=row['lat'], long=row['long'], label=row['label'])
+        node = GraphNode(coord1=row['coord1'], coord2=row['coord2'], label=row['label'])
         graph.add_vertex(node)
+        coords = parse_coords_node(node)
+
         for j in range(len(graph)):
             other = graph.get_vertex(j)
-            graph.add_edge(node, other, dist_to_spherical(node.pos, other.pos))
+            ocoords = parse_coords_node(other)
+            graph.add_edge(node, other, dist_to_spherical(coords, ocoords))
 
     return graph
